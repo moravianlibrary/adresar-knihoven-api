@@ -1,0 +1,14 @@
+<web-app>
+
+<servlet>
+<servlet-name>SiglaInf</servlet-name>
+<servlet-class>cpk.Serv</servlet-class>
+</servlet>
+
+<servlet-mapping>
+<servlet-name>SiglaInf</servlet-name>
+<url-pattern>/getinfo</url-pattern>
+<url-pattern>/getname</url-pattern>
+</servlet-mapping>
+
+</web-app>
