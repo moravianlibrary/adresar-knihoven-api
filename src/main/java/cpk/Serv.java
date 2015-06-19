@@ -80,16 +80,21 @@ public class Serv extends HttpServlet {
 							name = doc.createElement("name");
 							rootElement.appendChild(name);
 						}
+						Element label = null;
 						if (varfieldElem.getAttribute("id").matches("NAZ")) {
-							Element label = doc.createElement("cs");
-							label.appendChild(doc.createTextNode(varfieldElem.getTextContent()));
-							name.appendChild(label);
+							label = doc.createElement("cs");
+						} else if (varfieldElem.getAttribute("id").matches("VAR")) {
+							label = doc.createElement("en");
 						}
-						else if (varfieldElem.getAttribute("id").matches("VAR")) {
-							Element label = doc.createElement("en");
-							label.appendChild(doc.createTextNode(varfieldElem.getTextContent()));
-							name.appendChild(label);
+						for (final Node subfield : new IterableNodeList(
+								varfieldElem.getChildNodes())) {
+							Element subfieldElem = (Element) subfield;
+							Element sublabel = doc.createElement(renameId(varfieldElem.getAttribute("id"),
+									subfieldElem.getAttribute("label")));
+							sublabel.appendChild(doc.createTextNode(subfieldElem.getTextContent()));
+							label.appendChild(sublabel);
 						}
+						name.appendChild(label);
 						continue;
 					}
 					Element id = null;
