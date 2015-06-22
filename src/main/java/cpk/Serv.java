@@ -25,8 +25,8 @@ import java.util.regex.Pattern;
 public class Serv extends HttpServlet {
 
 	private static final long serialVersionUID = -1825743577532768126L;
-	
 	private static int PRETTY_PRINT_INDENT_FACTOR = 4;
+	private final String errConnection = "Service is temporarily unavailable.";
 
 	public void doGet(HttpServletRequest req, HttpServletResponse res)
 			throws ServletException, IOException {
@@ -37,10 +37,12 @@ public class Serv extends HttpServlet {
 		//pw.println("Welcome " + sigla.toLowerCase());
 		String response = sendRequest("http://aleph.nkp.cz/X?op=find&find_code=wrd&base=ADR&request=sig=" + sigla.toLowerCase());
 		//pw.println(response);
+		if (response == null) { printErrorMessage(pw, errConnection); return; }
 		String set_no = response.substring(response.indexOf("<set_number>") + 12, response.indexOf("</set_number>"));
 		//pw.println(set_no);
 		String info = sendRequest("http://aleph.nkp.cz/X?op=present&set_entry=000000001&format=marc&set_no=" + set_no);
 		//pw.println(info);
+		if (info == null) { printErrorMessage(pw, errConnection); return; }
 		Pattern p = Pattern.compile(".*/(\\w+)");
 		Matcher m = p.matcher(req.getRequestURL());
 		if (m.find()) {
@@ -54,6 +56,11 @@ public class Serv extends HttpServlet {
 			String json = convertXmlToJson(info);
 			pw.println(json);
 		}
+	}
+
+	private void printErrorMessage(PrintWriter pw, String message) {
+		String json = convertXmlToJson("<error>" + message + "</error>");
+		pw.println(json);
 	}
 
 	private String convertLabels(String info, boolean shorten) {
@@ -233,10 +240,8 @@ public class Serv extends HttpServlet {
 				result += line;
 			}
 			rd.close();
-		} catch (IOException e) {
-			e.printStackTrace();
 		} catch (Exception e) {
-			e.printStackTrace();
+			return null;
 		}
 		return result;
 	}
