@@ -26,7 +26,6 @@ public class Serv extends HttpServlet {
 
     private static final long serialVersionUID = -1825743577532768126L;
     private static int PRETTY_PRINT_INDENT_FACTOR = 4;
-    private final String errConnection = "Service is temporarily unavailable.";
     private final int SC_OK = 200;
     private final int SC_UNPROCESSABLE = 422;
     private int TIMEOUT_VALUE = 3000;
@@ -40,12 +39,12 @@ public class Serv extends HttpServlet {
 
         Response response = sendRequest("http://aleph.nkp.cz/X?op=find&find_code=wrd&base=ADR&request=sig=" +
                 sigla.toLowerCase());
-        if (response.statusCode != SC_OK) { printErrorMessage(pw, errConnection); res.setStatus(response.statusCode); return; }
+        if (response.statusCode != SC_OK) { printErrorMessage(pw, response.content); res.setStatus(response.statusCode); return; }
         String set_no = response.content.substring(response.content.indexOf("<set_number>") + 12,
                 response.content.indexOf("</set_number>"));
 
         Response info = sendRequest("http://aleph.nkp.cz/X?op=present&set_entry=000000001&format=marc&set_no=" + set_no);
-        if (info.statusCode != SC_OK) { printErrorMessage(pw, errConnection); res.setStatus(response.statusCode); return; }
+        if (info.statusCode != SC_OK) { printErrorMessage(pw, response.content); res.setStatus(response.statusCode); return; }
 
         Pattern p = Pattern.compile(".*/(\\w+)");
         Matcher m = p.matcher(req.getRequestURL());
@@ -239,6 +238,10 @@ public class Serv extends HttpServlet {
             con.setRequestMethod("GET");
             con.setConnectTimeout(TIMEOUT_VALUE);
             con.setReadTimeout(TIMEOUT_VALUE);
+            int statusCode = con.getResponseCode();
+            if (statusCode >= 400) {
+                throw new java.io.IOException("Server NK returned HTTP response code: " + statusCode);
+            }
             rd = new BufferedReader(
                     new InputStreamReader(con.getInputStream()));
             while ((line = rd.readLine()) != null) {
@@ -246,7 +249,7 @@ public class Serv extends HttpServlet {
             }
             rd.close();
         } catch (Exception e) {
-            return new Response(null, SC_UNPROCESSABLE);
+            return new Response(e.getMessage(), SC_UNPROCESSABLE);
         }
         return new Response(result, SC_OK);
     }
