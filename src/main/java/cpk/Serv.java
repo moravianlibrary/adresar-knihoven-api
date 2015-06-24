@@ -93,6 +93,7 @@ public class Serv extends HttpServlet {
                         if (varfieldElem.getAttribute("id").matches("NAZ")) {
                             label = doc.createElement("cs");
                         } else if (varfieldElem.getAttribute("id").matches("VAR")) {
+                            if (! varfieldElem.getAttribute("i1").matches("2")) continue; // exclude Czech name in VAR
                             label = doc.createElement("en");
                         }
                         for (final Node subfield : new IterableNodeList(
