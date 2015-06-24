@@ -40,14 +40,28 @@ public class Serv extends HttpServlet {
         Response response = sendRequest("http://aleph.nkp.cz/X?op=find&find_code=wrd&base=ADR&request=sig=" +
                 sigla.toLowerCase());
         if (response.statusCode != SC_OK) { printErrorMessage(pw, response.content); res.setStatus(response.statusCode); return; }
+
+        Pattern p = Pattern.compile(".*<error>(.*)</error>.*");
+        Matcher m = p.matcher(response.content);
+        if (m.find()) {
+            printErrorMessage(pw, m.group(1));
+            res.setStatus(HttpURLConnection.HTTP_BAD_REQUEST);
+            return;
+        }
         String set_no = response.content.substring(response.content.indexOf("<set_number>") + 12,
                 response.content.indexOf("</set_number>"));
 
         Response info = sendRequest("http://aleph.nkp.cz/X?op=present&set_entry=000000001&format=marc&set_no=" + set_no);
         if (info.statusCode != SC_OK) { printErrorMessage(pw, response.content); res.setStatus(response.statusCode); return; }
+        m = p.matcher(info.content);
+        if (m.find()) {
+            printErrorMessage(pw, m.group(1));
+            res.setStatus(HttpURLConnection.HTTP_BAD_REQUEST);
+            return;
+        }
 
-        Pattern p = Pattern.compile(".*/(\\w+)");
-        Matcher m = p.matcher(req.getRequestURL());
+        p = Pattern.compile(".*/(\\w+)");
+        m = p.matcher(req.getRequestURL());
         if (m.find()) {
             if (m.group(1).equals("getname")) {
                 info.content = convertLabels(info.content, true);
