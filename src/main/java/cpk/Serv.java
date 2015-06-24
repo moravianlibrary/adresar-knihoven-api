@@ -27,33 +27,35 @@ public class Serv extends HttpServlet {
 	private static final long serialVersionUID = -1825743577532768126L;
 	private static int PRETTY_PRINT_INDENT_FACTOR = 4;
 	private final String errConnection = "Service is temporarily unavailable.";
+	private final int SC_OK = 200;
+	private final int SC_UNPROCESSABLE = 422;
+	private int TIMEOUT_VALUE = 3000;
 
 	public void doGet(HttpServletRequest req, HttpServletResponse res)
 			throws ServletException, IOException {
 		res.setContentType("application/json; charset=UTF-8");
-		//res.setContentType("application/xml; charset=UTF-8");
 		PrintWriter pw = res.getWriter();
 		String sigla = req.getParameter("sigla");
-		//pw.println("Welcome " + sigla.toLowerCase());
-		String response = sendRequest("http://aleph.nkp.cz/X?op=find&find_code=wrd&base=ADR&request=sig=" + sigla.toLowerCase());
-		//pw.println(response);
-		if (response == null) { printErrorMessage(pw, errConnection); return; }
-		String set_no = response.substring(response.indexOf("<set_number>") + 12, response.indexOf("</set_number>"));
-		//pw.println(set_no);
-		String info = sendRequest("http://aleph.nkp.cz/X?op=present&set_entry=000000001&format=marc&set_no=" + set_no);
-		//pw.println(info);
-		if (info == null) { printErrorMessage(pw, errConnection); return; }
+
+		Response response = sendRequest("http://aleph.nkp.cz/X?op=find&find_code=wrd&base=ADR&request=sig=" +
+		        sigla.toLowerCase());
+		if (response.statusCode != SC_OK) { printErrorMessage(pw, errConnection); res.setStatus(response.statusCode); return; }
+		String set_no = response.content.substring(response.content.indexOf("<set_number>") + 12,
+		        response.content.indexOf("</set_number>"));
+
+		Response info = sendRequest("http://aleph.nkp.cz/X?op=present&set_entry=000000001&format=marc&set_no=" + set_no);
+		if (info.statusCode != SC_OK) { printErrorMessage(pw, errConnection); res.setStatus(response.statusCode); return; }
+
 		Pattern p = Pattern.compile(".*/(\\w+)");
 		Matcher m = p.matcher(req.getRequestURL());
 		if (m.find()) {
 			if (m.group(1).equals("getname")) {
-				info = convertLabels(info, true);
+				info.content = convertLabels(info.content, true);
 			}
 			else if (m.group(1).equals("getinfo")) {
-				info = convertLabels(info, false);
+				info.content = convertLabels(info.content, false);
 			}
-			//pw.println(info);
-			String json = convertXmlToJson(info);
+			String json = convertXmlToJson(info.content);
 			pw.println(json);
 		}
 	}
@@ -225,7 +227,7 @@ public class Serv extends HttpServlet {
 		return jsonPrettyPrintString;
 	}
 
-	private String sendRequest(String link) {
+	private Response sendRequest(String link) {
 		HttpURLConnection con;
 		BufferedReader rd;
 		String line;
@@ -234,6 +236,8 @@ public class Serv extends HttpServlet {
 			URL url = new URL(link);
 			con = (HttpURLConnection) url.openConnection();
 			con.setRequestMethod("GET");
+			con.setConnectTimeout(TIMEOUT_VALUE);
+			con.setReadTimeout(TIMEOUT_VALUE);
 			rd = new BufferedReader(
 					new InputStreamReader(con.getInputStream()));
 			while ((line = rd.readLine()) != null) {
@@ -241,8 +245,8 @@ public class Serv extends HttpServlet {
 			}
 			rd.close();
 		} catch (Exception e) {
-			return null;
+			return new Response(null, SC_UNPROCESSABLE);
 		}
-		return result;
+		return new Response(result, SC_OK);
 	}
 }
